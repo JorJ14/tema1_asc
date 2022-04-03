@@ -24,6 +24,16 @@ class QueueElement:
         self.available = True
 
 
+class CartElement:
+    """
+    Class that represents a Product inside a Cart.
+    Contains a Product and the producer_id.
+    """
+    def __init__(self, product, producer_id):
+        self.product = product
+        self.producer_id = producer_id
+
+
 class Marketplace:
     """
     Class that represents the Marketplace. It's the central part of the implementation.
@@ -43,6 +53,7 @@ class Marketplace:
         self.cart_id = 0
         self.producer_id_lock = Lock()
         self.cart_id_lock = Lock()
+        #self.lock = Lock()
 
     def register_producer(self):
         """
@@ -72,7 +83,9 @@ class Marketplace:
             return False
         if len(producer_list) == self.queue_size_per_producer:
             return False
+        #self.lock.acquire()
         self.producers[producer_id].append(QueueElement(product))
+        #self.lock.release()
         return True
 
     def new_cart(self):
@@ -107,15 +120,18 @@ class Marketplace:
         max_producer_id = self.producer_id
         self.producer_id_lock.release()
 
+        #self.lock.acquire()
         for producer_id in range(max_producer_id):
             producer_id_string = "prod{0}".format(producer_id)
             producer_list = self.producers[producer_id_string]
             for i in range(len(producer_list)):
                 element = producer_list[i]
                 if element.product == product and element.available:
-                    self.carts[cart_id].append(product)
+                    self.carts[cart_id].append(CartElement(product, producer_id_string))
                     self.producers[producer_id_string][i].set_unavailable()
+                    #self.lock.release()
                     return True
+        #self.lock.release()
         return False
 
     def remove_from_cart(self, cart_id, product):
@@ -131,19 +147,19 @@ class Marketplace:
         cart_list = self.carts[cart_id]
         if cart_list is None:
             return False
-        self.producer_id_lock.acquire()
-        max_producer_id = self.producer_id
-        self.producer_id_lock.release()
-
-        for producer_id in range(max_producer_id):
-            producer_id_string = "prod{0}".format(producer_id)
-            producer_list = self.producers[producer_id_string]
-            for i in range(len(producer_list)):
-                element = producer_list[i]
-                if element.product == product and not element.available:
-                    self.carts[cart_id].remove(product)
-                    self.producers[producer_id_string][i].set_available()
-                    return True
+        #self.lock.acquire()
+        for cart_element in cart_list:
+            if cart_element.product == product:
+                producer_id = cart_element.producer_id
+                producer_list = self.producers[producer_id]
+                for i in range(len(producer_list)):
+                    element = producer_list[i]
+                    if element.product == product and not element.available:
+                        self.carts[cart_id].remove(cart_element)
+                        self.producers[producer_id][i].set_available()
+                        #self.lock.release()
+                        return True
+        #self.lock.release()
         return False
 
     def place_order(self, cart_id):
@@ -153,20 +169,20 @@ class Marketplace:
         :type cart_id: Int
         :param cart_id: id cart
         """
+        result = []
         cart_list = self.carts[cart_id]
         if cart_list is None:
             return None
-        self.producer_id_lock.acquire()
-        max_producer_id = self.producer_id
-        self.producer_id_lock.release()
 
-        for product in cart_list:
-            for producer_id in range(max_producer_id):
-                producer_id_string = "prod{0}".format(producer_id)
-                producer_list = self.producers[producer_id_string]
-                for element in producer_list:
-                    if element.product == product and not element.available:
-                        self.carts[cart_id].remove(product)
-                        self.producers[producer_id_string].remove(element)
-                        break
-        return cart_list
+        #self.lock.acquire()
+        for cart_element in cart_list:
+            product = cart_element.product
+            result.append(product)
+            producer_id = cart_element.producer_id
+            producer_list = self.producers[producer_id]
+            for element in producer_list:
+                if element.product == product and not element.available:
+                    self.producers[producer_id].remove(element)
+                    break
+        #self.lock.release()
+        return result
