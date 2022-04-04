@@ -49,7 +49,7 @@ class Marketplace:
         self.cart_id = 0
         self.producer_id_lock = Lock()
         self.cart_id_lock = Lock()
-        # self.lock = Lock()
+        self.producers_locks = {}
 
     def register_producer(self):
         """
@@ -58,6 +58,7 @@ class Marketplace:
         self.producer_id_lock.acquire()
         producer_id_string = "prod{0}".format(self.producer_id)
         self.producers[producer_id_string] = []
+        self.producers_locks[producer_id_string] = Lock()
         self.producer_id += 1
         self.producer_id_lock.release()
         return producer_id_string
@@ -74,14 +75,16 @@ class Marketplace:
 
         :returns True or False. If the caller receives False, it should wait and then try again.
         """
+        self.producers_locks[producer_id].acquire()
         producer_list = self.producers[producer_id]
         if producer_list is None:
+            self.producers_locks[producer_id].release()
             return False
         if len(producer_list) == self.queue_size_per_producer:
+            self.producers_locks[producer_id].release()
             return False
-        # self.lock.acquire()
         self.producers[producer_id].append(QueueElement(product))
-        # self.lock.release()
+        self.producers_locks[producer_id].release()
         return True
 
     def new_cart(self):
@@ -116,17 +119,18 @@ class Marketplace:
         max_producer_id = self.producer_id
         self.producer_id_lock.release()
 
-        # self.lock.acquire()
         for producer_id in range(max_producer_id):
             producer_id_string = "prod{0}".format(producer_id)
+            self.producers_locks[producer_id_string].acquire()
             producer_list = self.producers[producer_id_string]
             for element in producer_list:
                 if element.product == product and element.available:
-                    self.carts[cart_id].append({"product": product, "producer_id": producer_id_string})
+                    self.carts[cart_id].append({"product": product,
+                                                "producer_id": producer_id_string})
                     element.set_unavailable()
-                    # self.lock.release()
+                    self.producers_locks[producer_id_string].release()
                     return True
-        # self.lock.release()
+            self.producers_locks[producer_id_string].release()
         return False
 
     def remove_from_cart(self, cart_id, product):
@@ -142,18 +146,18 @@ class Marketplace:
         cart_list = self.carts[cart_id]
         if cart_list is None:
             return False
-        # self.lock.acquire()
         for cart_element in cart_list:
             if cart_element["product"] == product:
                 producer_id = cart_element["producer_id"]
+                self.producers_locks[producer_id].acquire()
                 producer_list = self.producers[producer_id]
                 for element in producer_list:
                     if element.product == product and not element.available:
                         self.carts[cart_id].remove(cart_element)
                         element.set_available()
-                        # self.lock.release()
+                        self.producers_locks[producer_id].release()
                         return True
-        # self.lock.release()
+                self.producers_locks[producer_id].release()
         return False
 
     def place_order(self, cart_id):
@@ -168,15 +172,15 @@ class Marketplace:
         if cart_list is None:
             return None
 
-        # self.lock.acquire()
         for cart_element in cart_list:
             product = cart_element["product"]
             result.append(product)
             producer_id = cart_element["producer_id"]
+            self.producers_locks[producer_id].acquire()
             producer_list = self.producers[producer_id]
             for element in producer_list:
                 if element.product == product and not element.available:
                     self.producers[producer_id].remove(element)
                     break
-        # self.lock.release()
+            self.producers_locks[producer_id].release()
         return result
