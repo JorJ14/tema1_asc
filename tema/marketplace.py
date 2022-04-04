@@ -6,6 +6,7 @@ Assignment 1
 March 2021
 """
 from threading import Lock
+import unittest
 
 
 class QueueElement:
@@ -13,6 +14,7 @@ class QueueElement:
     Class that represents a Product inside a Queue.
     Contains a Product and an available flag.
     """
+
     def __init__(self, product):
         self.product = product
         self.available = True
@@ -35,6 +37,7 @@ class Marketplace:
     Class that represents the Marketplace. It's the central part of the implementation.
     The producers and consumers use its methods concurrently.
     """
+
     def __init__(self, queue_size_per_producer):
         """
         Constructor
@@ -184,3 +187,58 @@ class Marketplace:
                     break
             self.producers_locks[producer_id].release()
         return result
+
+
+class TestMarketplace(unittest.TestCase):
+    """
+    Unit testing class for Marketplace functionalities.
+    """
+
+    def setUp(self):
+        """
+        Set up method for tests.
+        Instantiate Marketplace with max_queue_size = 5
+        """
+        self.marketplace = Marketplace(5)
+
+    def test_register_producer(self):
+        """
+        Tests that producer_id is generated as expected.
+        """
+        self.assertEqual(self.marketplace.register_producer(), 'prod0',
+                         'Incorrect producer_id assigned for first producer')
+        self.assertEqual(self.marketplace.register_producer(), 'prod1',
+                         'Incorrect producer_id assigned for second producer')
+        self.assertEqual(self.marketplace.register_producer(), 'prod2',
+                         'Incorrect producer_id assigned for third producer')
+
+    def test_publish(self):
+        """
+        Tests that a producer can publish products.
+        Tests that a producer cannot publish products when his queue is full.
+        """
+        self.test_register_producer()
+        for _ in range(3):
+            check = self.marketplace.publish('prod0', {
+                "product_type": "Coffee",
+                "name": "Indonezia",
+                "acidity": 5.05,
+                "roast_level": "MEDIUM",
+                "price": 1})
+            self.assertTrue(check, 'Producer prod0 should be able to publish product')
+        for _ in range(2):
+            check = self.marketplace.publish('prod0', {
+                "product_type": "Tea",
+                "name": "Linden",
+                "type": "Herbal",
+                "price": 9
+            })
+            self.assertTrue(check, 'Producer prod0 should be able to publish product')
+        check = self.marketplace.publish('prod0', {
+            "product_type": "Coffee",
+            "name": "Brasil",
+            "acidity": 5.09,
+            "roast_level": "MEDIUM",
+            "price": 7
+        })
+        self.assertFalse(check, 'Producer prod0 should not be able to publish product')
