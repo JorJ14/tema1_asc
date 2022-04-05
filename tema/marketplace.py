@@ -17,6 +17,7 @@ class QueueElement:
 
     def __init__(self, product):
         self.product = product
+        self.cart = -1
         self.available = True
 
     def set_unavailable(self):
@@ -30,6 +31,12 @@ class QueueElement:
         Sets element available for consumers.
         """
         self.available = True
+
+    def set_cart(self, cart_id):
+        """
+        Reserves the product for a consumer
+        """
+        self.cart = cart_id
 
 
 class Marketplace:
@@ -131,6 +138,7 @@ class Marketplace:
                     self.carts[cart_id].append({"product": product,
                                                 "producer_id": producer_id_string})
                     element.set_unavailable()
+                    element.set_cart(cart_id)
                     self.producers_locks[producer_id_string].release()
                     return True
             self.producers_locks[producer_id_string].release()
@@ -155,7 +163,8 @@ class Marketplace:
                 self.producers_locks[producer_id].acquire()
                 producer_list = self.producers[producer_id]
                 for element in producer_list:
-                    if element.product == product and not element.available:
+                    if (element.product == product and element.cart == cart_id
+                            and not element.available):
                         self.carts[cart_id].remove(cart_element)
                         element.set_available()
                         self.producers_locks[producer_id].release()
@@ -182,10 +191,12 @@ class Marketplace:
             self.producers_locks[producer_id].acquire()
             producer_list = self.producers[producer_id]
             for element in producer_list:
-                if element.product == product and not element.available:
+                if (element.product == product and element.cart == cart_id
+                        and not element.available):
                     self.producers[producer_id].remove(element)
                     break
             self.producers_locks[producer_id].release()
+        self.carts[cart_id] = []
         return result
 
 
@@ -307,8 +318,61 @@ class TestMarketplace(unittest.TestCase):
         Test add_to_cart method.
         """
         self.test_new_cart()
-        for i in range(3):
+        for _ in range(3):
             self.assertTrue(self.marketplace.add_to_cart(0, self.product1),
                             'Cannot add product1 to cart!')
         self.assertFalse(self.marketplace.add_to_cart(0, self.product1),
                          'Should not be able to add product1 to cart!')
+        self.assertEqual(len(self.marketplace.carts[0]), 3,
+                         'Wrong number of products added to cart!')
+        self.assertTrue(self.marketplace.add_to_cart(0, self.product2),
+                        'Cannot add product2 to cart!')
+        self.assertTrue(self.marketplace.add_to_cart(1, self.product2),
+                        'Cannot add product2 to cart!')
+        self.assertFalse(self.marketplace.add_to_cart(1, self.product2),
+                         'Should not be able to add product2 to cart!')
+        self.assertEqual(len(self.marketplace.carts[1]), 1,
+                         'Wrong number of products added to cart!')
+        # Checks if products are available/unavailable
+        for element in self.marketplace.producers['prod0']:
+            if element.product == self.product1:
+                self.assertFalse(element.available,
+                                 'Product should be unavailable!')
+            elif element.product == self.product0:
+                self.assertTrue(element.available,
+                                'Product should be available!')
+
+    def test_remove_from_cart(self):
+        """
+        Tests remove_from_cart method.
+        """
+        self.test_add_to_cart()
+        self.assertTrue(self.marketplace.remove_from_cart(0, self.product1),
+                        'Cannot remove product1 from cart!')
+        self.assertEqual(len(self.marketplace.carts[0]), 3,
+                         'Wrong number of products in cart0!')
+        self.assertFalse(self.marketplace.remove_from_cart(0, self.product3),
+                         'Should not be able to remove this product!')
+        unavailable_product1 = 0
+        for element in self.marketplace.producers['prod0']:
+            if element.product == self.product1 and not element.available:
+                unavailable_product1 += 1
+        self.assertEqual(unavailable_product1, 1,
+                         'Wrong number of unavailable product1 in prod0 queue')
+
+    def test_place_order(self):
+        """
+        Tests place_order method.
+        """
+        self.test_remove_from_cart()
+        self.assertEqual(self.marketplace.place_order(0),
+                         [self.product1, self.product1, self.product2],
+                         'Wrong cart list!')
+        # Checks if products are removed from producer's queue
+        self.assertEqual(len(self.marketplace.producers['prod0']), 4,
+                         'Wrong number of products in prod0 queue!')
+        self.assertEqual(len(self.marketplace.producers['prod1']), 2,
+                         'Wrong number of products in prod1 queue!')
+        # Checks if products are removed from cart
+        self.assertEqual(self.marketplace.carts[0], [],
+                         'Cart0 should be empty!')
