@@ -200,17 +200,44 @@ class TestMarketplace(unittest.TestCase):
         Instantiate Marketplace with max_queue_size = 5
         """
         self.marketplace = Marketplace(5)
+        self.product0 = {
+            "product_type": "Coffee",
+            "name": "Indonezia",
+            "acidity": 5.05,
+            "roast_level": "MEDIUM",
+            "price": 1
+        }
+        self.product1 = {
+            "product_type": "Tea",
+            "name": "Linden",
+            "type": "Herbal",
+            "price": 9
+        }
+        self.product2 = {
+            "product_type": "Coffee",
+            "name": "Ethiopia",
+            "acidity": 5.09,
+            "roast_level": "MEDIUM",
+            "price": 10
+        }
+        self.product3 = {
+            "product_type": "Coffee",
+            "name": "Arabica",
+            "acidity": 5.02,
+            "roast_level": "MEDIUM",
+            "price": 9
+        }
 
     def test_register_producer(self):
         """
         Tests that producer_id is generated as expected.
         """
         self.assertEqual(self.marketplace.register_producer(), 'prod0',
-                         'Incorrect producer_id assigned for first producer')
+                         'Incorrect producer_id assigned for first producer!')
         self.assertEqual(self.marketplace.register_producer(), 'prod1',
-                         'Incorrect producer_id assigned for second producer')
+                         'Incorrect producer_id assigned for second producer!')
         self.assertEqual(self.marketplace.register_producer(), 'prod2',
-                         'Incorrect producer_id assigned for third producer')
+                         'Incorrect producer_id assigned for third producer!')
 
     def test_publish(self):
         """
@@ -218,27 +245,70 @@ class TestMarketplace(unittest.TestCase):
         Tests that a producer cannot publish products when his queue is full.
         """
         self.test_register_producer()
+
         for _ in range(3):
-            check = self.marketplace.publish('prod0', {
-                "product_type": "Coffee",
-                "name": "Indonezia",
-                "acidity": 5.05,
-                "roast_level": "MEDIUM",
-                "price": 1})
-            self.assertTrue(check, 'Producer prod0 should be able to publish product')
+            check = self.marketplace.publish('prod0', self.product0)
+            self.assertTrue(check, 'Producer prod0 should be able to publish product!')
         for _ in range(2):
-            check = self.marketplace.publish('prod0', {
-                "product_type": "Tea",
-                "name": "Linden",
-                "type": "Herbal",
-                "price": 9
-            })
-            self.assertTrue(check, 'Producer prod0 should be able to publish product')
-        check = self.marketplace.publish('prod0', {
-            "product_type": "Coffee",
-            "name": "Brasil",
-            "acidity": 5.09,
-            "roast_level": "MEDIUM",
-            "price": 7
-        })
-        self.assertFalse(check, 'Producer prod0 should not be able to publish product')
+            check = self.marketplace.publish('prod0', self.product1)
+            self.assertTrue(check, 'Producer prod0 should be able to publish product!')
+        check = self.marketplace.publish('prod0', self.product0)
+        self.assertFalse(check, 'Producer prod0 should not be able to publish product!')
+
+        index = 0
+        for element in self.marketplace.producers['prod0']:
+            if index < 3:
+                self.assertTrue(element.product == self.product0 and element.available,
+                                'Producer prod0 published wrong product!')
+            else:
+                self.assertTrue(element.product == self.product1 and element.available,
+                                'Producer prod0 published wrong product!')
+            index += 1
+
+        for _ in range(2):
+            check = self.marketplace.publish('prod1', self.product2)
+            self.assertTrue(check, 'Producer prod1 should be able to publish product!')
+        check = self.marketplace.publish('prod1', self.product3)
+        self.assertTrue(check, 'Producer prod1 should be able to publish product!')
+        check = self.marketplace.publish('prod1', self.product1)
+        self.assertTrue(check, 'Producer prod1 should be able to publish product!')
+        index = 0
+        for element in self.marketplace.producers['prod1']:
+            if index < 2:
+                self.assertTrue(element.product == self.product2 and element.available,
+                                'Producer prod1 published wrong product!')
+            elif index == 2:
+                self.assertTrue(element.product == self.product3 and element.available,
+                                'Producer prod1 published wrong product!')
+            else:
+                self.assertTrue(element.product == self.product1 and element.available,
+                                'Producer prod1 published wrong product!')
+            index += 1
+
+    def test_new_cart(self):
+        """
+        Tests new_cart method.
+        """
+        self.test_publish()
+        self.assertEqual(self.marketplace.new_cart(), 0,
+                         'Incorrect cart_id assigned for first cart!')
+        self.assertEqual(self.marketplace.new_cart(), 1,
+                         'Incorrect cart_id assigned for second cart!')
+        self.assertEqual(self.marketplace.new_cart(), 2,
+                         'Incorrect cart_id assigned for third cart!')
+        self.assertEqual(self.marketplace.new_cart(), 3,
+                         'Incorrect cart_id assigned for fourth cart!')
+        for i in range(4):
+            self.assertEqual(self.marketplace.carts[i], [],
+                             'Cart should be empty!')
+
+    def test_add_to_cart(self):
+        """
+        Test add_to_cart method.
+        """
+        self.test_new_cart()
+        for i in range(3):
+            self.assertTrue(self.marketplace.add_to_cart(0, self.product1),
+                            'Cannot add product1 to cart!')
+        self.assertFalse(self.marketplace.add_to_cart(0, self.product1),
+                         'Should not be able to add product1 to cart!')
