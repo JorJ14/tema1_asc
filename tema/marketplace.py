@@ -34,7 +34,7 @@ class QueueElement:
 
     def set_cart(self, cart_id):
         """
-        Reserves the product for a consumer
+        Reserves the product for a cart
         """
         self.cart = cart_id
 
@@ -338,6 +338,8 @@ class TestMarketplace(unittest.TestCase):
             if element.product == self.product1:
                 self.assertFalse(element.available,
                                  'Product should be unavailable!')
+                self.assertEqual(element.cart, 0,
+                                 'Product should be reserved in cart0!')
             elif element.product == self.product0:
                 self.assertTrue(element.available,
                                 'Product should be available!')
