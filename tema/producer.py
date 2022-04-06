@@ -32,6 +32,7 @@ class Producer(Thread):
         @type kwargs:
         @param kwargs: other arguments that are passed to the Thread's __init__()
         """
+        # Set daemon = True, to create a background thread
         Thread.__init__(self, daemon=True)
         self.products = products
         self.marketplace = marketplace
@@ -39,15 +40,23 @@ class Producer(Thread):
         self.name = kwargs["name"]
 
     def run(self):
+        """
+        This function describes what a producer is doing.
+        """
+        # Register the producer
         producer_id = self.marketplace.register_producer()
-
+        # Publish products
         while True:
+            # Publish each product
             for element in self.products:
+                # Extract product, quantity and production time
                 product = element[0]
                 quantity = element[1]
                 production_time = element[2]
+                # Wait to finish production
                 sleep(production_time)
-
+                # Publish the product
                 for _ in range(quantity):
                     while not self.marketplace.publish(producer_id, product):
+                        # Wait if queue is full
                         sleep(self.republish_wait_time)

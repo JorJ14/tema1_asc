@@ -39,19 +39,27 @@ class Consumer(Thread):
         self.name = kwargs["name"]
 
     def run(self):
+        """
+        This function describes what a consumer is doing.
+        """
+        # For each cart
         for cart in self.carts:
+            # Register cart
             cart_id = self.marketplace.new_cart()
-
+            # For each operation in the cart
             for operation in cart:
+                # If the operation is an add
                 if operation["type"] == "add":
                     for _ in range(operation["quantity"]):
                         while not self.marketplace.add_to_cart(cart_id, operation["product"]):
+                            # Wait if product is unavailable
                             sleep(self.retry_wait_time)
                 elif operation["type"] == "remove":
+                    # If the operation is a remove
                     for _ in range(operation["quantity"]):
                         self.marketplace.remove_from_cart(cart_id, operation["product"])
-
+            # After all operations, place the order
             order = self.marketplace.place_order(cart_id)
-
+            # Print the result of placing the order
             for product in order:
                 print("{0} bought {1}".format(self.name, product))
