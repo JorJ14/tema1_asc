@@ -37,11 +37,5 @@ Resurse utilizate
 
 Git
 -
-1. Link către repo-ul de git
+Link către repository-ul de git: [https://github.com/JorJ14/tema1_asc.git](aici) (momentan privat)
 
-Ce să **NU**
--
-* Detalii de implementare despre fiecare funcție/fișier în parte
-* Fraze lungi care să ocolească subiectul în cauză
-* Răspunsuri și idei neargumentate
-* Comentarii (din cod) și *TODO*-uri
