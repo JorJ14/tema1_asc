@@ -27,6 +27,8 @@ Pentru a implementa aceste funcționalități, am avut următoarea abordare:
 * coșul de cumpărături este o listă de dicționare, de forma: {"product": produsul, "producer_id": id-ul producătorului}. Astfel, atunci când un consumator rezervă un produs, o să știe de la ce producător a rezervat, iar id-ul producătorului o să fie șters din lista de producători ce au produsul disponibil. Apoi, dacă consumatorul dorește să șteargă un produs din coș, pe baza informației salvate, o să putem readăuga id-ul producătorului în lista de producători care au produsul disponibil. Această informație ne este utilă și atunci când un consumator plasează o comandă, deoarece o să știm pentru ce producători trebuie să reducem numărul de produse nevândute încă;
 * deși anumite operații pe liste sunt Thread-Safe, o succesiune de astfel de operații nu este neapărat Thread-Safe. Astfel, pentru listele de producători care au un anumit produs disponibil, am folosit Lock-uri, fiind explicat și în comentariile codului sursă.
 
+Pentru Unit Testing și Logging am urmat recomandările din enunț.
+
 Consider tema utilă pentru că m-am obișnuit cu coding style-ul din Python, cu sintaxa de Python și pentru partea de Unit Testing.
 Totuși, mi se pare că se pierde din farmecul Multithreading-ului prin folosirea apelurilor sleep, în locul unor elemente de sincronizare.
 
