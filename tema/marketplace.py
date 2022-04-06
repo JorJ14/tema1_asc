@@ -6,6 +6,8 @@ Assignment 1
 March 2021
 """
 from threading import Lock
+import unittest
+from tema.product import Coffee, Tea
 
 
 class Marketplace:
@@ -203,3 +205,172 @@ class Marketplace:
         # Cleans the cart list
         self.carts[cart_id] = []
         return result
+
+
+class TestMarketplace(unittest.TestCase):
+    """
+    Unit testing class for Marketplace functionalities.
+    """
+
+    def setUp(self):
+        """
+        Set up method for tests.
+        Instantiate Marketplace with max_queue_size = 5
+        """
+        self.marketplace = Marketplace(5)
+        self.product0 = Coffee(name="Indonezia", acidity="5.05", roast_level="MEDIUM", price=1)
+        self.product1 = Tea(name="Linden", type="Herbal", price=9)
+        self.product2 = Coffee(name="Ethiopia", acidity="5.09", roast_level="MEDIUM", price=10)
+        self.product3 = Coffee(name="Arabica", acidity="5.02", roast_level="MEDIUM", price=9)
+
+    def test_register_producer(self):
+        """
+        Tests that producer_id is generated as expected.
+        Registers 3 producers.
+        """
+        self.assertEqual(self.marketplace.register_producer(), 'prod0',
+                         'Incorrect producer_id assigned for first producer!')
+        self.assertEqual(self.marketplace.register_producer(), 'prod1',
+                         'Incorrect producer_id assigned for second producer!')
+        self.assertEqual(self.marketplace.register_producer(), 'prod2',
+                         'Incorrect producer_id assigned for third producer!')
+
+    def test_publish(self):
+        """
+        Tests that a producer can publish products.
+        Tests that a producer cannot publish products when his queue is full.
+        """
+        self.test_register_producer()
+        # Prod0 publish 3 units of product0
+        for _ in range(3):
+            check = self.marketplace.publish('prod0', self.product0)
+            self.assertTrue(check, 'Producer prod0 should be able to publish product!')
+        # Prod0 publish 2 units of product1
+        for _ in range(2):
+            check = self.marketplace.publish('prod0', self.product1)
+            self.assertTrue(check, 'Producer prod0 should be able to publish product!')
+        # Now Prod0 queue is full. Should not be able to publish extra products
+        check = self.marketplace.publish('prod0', self.product0)
+        self.assertFalse(check, 'Producer prod0 should not be able to publish product!')
+        # Prod1 publish 2 units of product 2
+        for _ in range(2):
+            check = self.marketplace.publish('prod1', self.product2)
+            self.assertTrue(check, 'Producer prod1 should be able to publish product!')
+        # Prod1 publish 1 unit of product3
+        check = self.marketplace.publish('prod1', self.product3)
+        self.assertTrue(check, 'Producer prod1 should be able to publish product!')
+        # Prod1 publish 1 unit of product1
+        check = self.marketplace.publish('prod1', self.product1)
+        self.assertTrue(check, 'Producer prod1 should be able to publish product!')
+        # Checks prod0 and prod1 queue sizes
+        self.assertEqual(self.marketplace.producers_queue['prod0'], 5,
+                         'Producer prod0 queue should be full!')
+        self.assertEqual(self.marketplace.producers_queue['prod1'], 4,
+                         'Producer prod1 queue size should be 4!')
+        # Checks the available quantity for each product
+        self.assertEqual(len(self.marketplace.products_producers[self.product0.name]), 3,
+                         'Product0 should be available in quantity = 3!')
+        self.assertEqual(len(self.marketplace.products_producers[self.product1.name]), 3,
+                         'Product1 should be available in quantity = 3!')
+        self.assertEqual(len(self.marketplace.products_producers[self.product2.name]), 2,
+                         'Product2 should be available in quantity = 2!')
+        self.assertEqual(len(self.marketplace.products_producers[self.product3.name]), 1,
+                         'Product3 should be available in quantity = 1!')
+
+    def test_new_cart(self):
+        """
+        Tests new_cart method.
+        """
+        self.test_publish()
+        # Create 4 carts
+        self.assertEqual(self.marketplace.new_cart(), 0,
+                         'Incorrect cart_id assigned for first cart!')
+        self.assertEqual(self.marketplace.new_cart(), 1,
+                         'Incorrect cart_id assigned for second cart!')
+        self.assertEqual(self.marketplace.new_cart(), 2,
+                         'Incorrect cart_id assigned for third cart!')
+        self.assertEqual(self.marketplace.new_cart(), 3,
+                         'Incorrect cart_id assigned for fourth cart!')
+        # Checks if carts lists are empty
+        for i in range(4):
+            self.assertEqual(self.marketplace.carts[i], [],
+                             'Cart should be empty!')
+
+    def test_add_to_cart(self):
+        """
+        Test add_to_cart method.
+        """
+        self.test_new_cart()
+        # Add product0 to cart0
+        self.assertTrue(self.marketplace.add_to_cart(0, self.product0),
+                        'Cannot add product0 to cart!')
+        # Add 3 units of product1 to cart0
+        for _ in range(3):
+            self.assertTrue(self.marketplace.add_to_cart(0, self.product1),
+                            'Cannot add product1 to cart!')
+        # Now, try to add one extra unit of product1 to cart0
+        # There is no unit available, so it shouldn't be able to add to cart
+        self.assertFalse(self.marketplace.add_to_cart(0, self.product1),
+                         'Should not be able to add product1 to cart!')
+        # Add 1 unit of product2 to cart0
+        self.assertTrue(self.marketplace.add_to_cart(0, self.product2),
+                        'Cannot add product2 to cart!')
+        # Checks the size of cart0
+        self.assertEqual(len(self.marketplace.carts[0]), 5,
+                         'Wrong number of products added to cart!')
+        # Add 1 unit of product2 to cart1
+        self.assertTrue(self.marketplace.add_to_cart(1, self.product2),
+                        'Cannot add product2 to cart!')
+        # Now, try to add one extra unit of product2 to cart1
+        # There is no unit available, so it shouldn't be able to add to cart
+        self.assertFalse(self.marketplace.add_to_cart(1, self.product2),
+                         'Should not be able to add product2 to cart!')
+        # Checks the size of cart1
+        self.assertEqual(len(self.marketplace.carts[1]), 1,
+                         'Wrong number of products added to cart!')
+        # Checks the available quantity for each product
+        self.assertEqual(len(self.marketplace.products_producers[self.product0.name]), 2,
+                         'Product0 should be available in quantity = 0!')
+        self.assertEqual(len(self.marketplace.products_producers[self.product1.name]), 0,
+                         'Product1 should be available in quantity = 3!')
+        self.assertEqual(len(self.marketplace.products_producers[self.product2.name]), 0,
+                         'Product2 should be available in quantity = 2!')
+        self.assertEqual(len(self.marketplace.products_producers[self.product3.name]), 1,
+                         'Product3 should be available in quantity = 1!')
+
+    def test_remove_from_cart(self):
+        """
+        Tests remove_from_cart method.
+        """
+        self.test_add_to_cart()
+        # Removes the first product1 from cart0
+        self.assertTrue(self.marketplace.remove_from_cart(0, self.product1),
+                        'Cannot remove product1 from cart!')
+        # Checks if size of cart changed
+        self.assertEqual(len(self.marketplace.carts[0]), 4,
+                         'Wrong number of products in cart0!')
+        # Now, try to remove product3 from cart0. Product3 is not in cart0,
+        # so we should not be able to remove
+        self.assertFalse(self.marketplace.remove_from_cart(0, self.product3),
+                         'Should not be able to remove this product!')
+        # Checks the available quantity for product1
+        self.assertEqual(len(self.marketplace.products_producers[self.product1.name]), 1,
+                         'Product1 should be available in quantity = 1!')
+
+    def test_place_order(self):
+        """
+        Tests place_order method.
+        """
+        self.test_remove_from_cart()
+        # Places order for cart0 and checks the result
+        self.assertEqual(self.marketplace.place_order(0),
+                         [self.product0, self.product1, self.product1, self.product2],
+                         'Wrong cart list!')
+        # Checks if products are removed from producer's queue
+        self.assertEqual(self.marketplace.producers_queue['prod0'], 3,
+                         'Producer prod0 queue contain 3 products!')
+        self.assertEqual(self.marketplace.producers_queue['prod1'], 2,
+                         'Producer prod1 queue should contain 2 products!')
+        # Checks if products are removed from cart
+        self.assertEqual(self.marketplace.carts[0], [],
+                         'Cart0 should be empty!')
