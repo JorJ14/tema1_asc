@@ -7,6 +7,8 @@ March 2021
 """
 from threading import Lock
 import unittest
+import logging
+from logging.handlers import RotatingFileHandler
 from tema.product import Coffee, Tea
 
 
@@ -15,6 +17,7 @@ class Marketplace:
     Class that represents the Marketplace. It's the central part of the implementation.
     The producers and consumers use its methods concurrently.
     """
+    # pylint: disable=too-many-instance-attributes
 
     def __init__(self, queue_size_per_producer):
         """
@@ -49,6 +52,14 @@ class Marketplace:
         # after that each one pops the queue products_producers[product1.name] and the second
         # pop will give us an error (we will pop an empty queue)
         self.products_locks = {}
+        # Used for logging
+        self.logger = logging.getLogger('my_logger')
+        self.logger.setLevel(logging.INFO)
+        self.handler = RotatingFileHandler("marketplace.log", maxBytes=10000, backupCount=20)
+        self.formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+        # self.formatter.converter = time.gmtime()
+        self.handler.setFormatter(self.formatter)
+        self.logger.addHandler(self.handler)
 
     def register_producer(self):
         """
@@ -66,6 +77,8 @@ class Marketplace:
         self.producer_id += 1
         # Release the lock which protects producer_id
         self.producer_id_lock.release()
+        self.logger.info("register_producer(): returned producer_id: %s!",
+                         producer_id_string)
         return producer_id_string
 
     def publish(self, producer_id, product):
@@ -88,6 +101,8 @@ class Marketplace:
         if queue_size == self.queue_size_per_producer:
             # Release the lock
             self.producers_locks[producer_id].release()
+            self.logger.info("publish(%s, %s): Queue is Full!",
+                             producer_id, product)
             return False
         # Marks the product as available at producer_id
         if product.name not in self.products_producers:
@@ -102,6 +117,8 @@ class Marketplace:
         self.producers_queue[producer_id] += 1
         # Release the lock
         self.producers_locks[producer_id].release()
+        self.logger.info("publish(%s, %s): Published product!",
+                         producer_id, product)
         return True
 
     def new_cart(self):
@@ -119,6 +136,7 @@ class Marketplace:
         self.cart_id += 1
         # Release the lock
         self.cart_id_lock.release()
+        self.logger.info("new_cart(): New cart: %d!", cart_id)
         return cart_id
 
     def add_to_cart(self, cart_id, product):
@@ -135,13 +153,19 @@ class Marketplace:
         """
         # Checks if cart with cart_id exists
         if cart_id not in self.carts:
+            self.logger.info("add_to_cart(%d, %s): Cart doesn't exist!",
+                             cart_id, product)
             return False
         # Checks if product is available at any producer
         if product.name not in self.products_producers:
+            self.logger.info("add_to_cart(%d, %s): Product is not available!",
+                             cart_id, product)
             return False
         self.products_locks[product.name].acquire()
         if not self.products_producers[product.name]:
             self.products_locks[product.name].release()
+            self.logger.info("add_to_cart(%d, %s): Product is not available!",
+                             cart_id, product)
             return False
         # Extracts one producer that has the product available
         # Makes product unavailable
@@ -152,6 +176,8 @@ class Marketplace:
         # this producer
         self.carts[cart_id].append({"product": product,
                                     "producer_id": producer_id})
+        self.logger.info("add_to_cart(%d, %s): Product added to cart!",
+                         cart_id, product)
         return True
 
     def remove_from_cart(self, cart_id, product):
@@ -166,6 +192,8 @@ class Marketplace:
         """
         # Checks if cart_id exists
         if cart_id not in self.carts:
+            self.logger.info("remove_from_cart(%d, %s): Cart doesn't exist!",
+                             cart_id, product)
             return False
         # Extracts the cart list
         cart_list = self.carts[cart_id]
@@ -177,7 +205,11 @@ class Marketplace:
                 self.products_producers[product.name].append(producer_id)
                 # Removes product from cart
                 self.carts[cart_id].remove(cart_element)
+                self.logger.info("remove_from_cart(%d, %s): Product removed from cart!",
+                                 cart_id, product)
                 return True
+        self.logger.info("remove_from_cart(%d, %s): Product not found in cart!",
+                         cart_id, product)
         return False
 
     def place_order(self, cart_id):
@@ -190,6 +222,7 @@ class Marketplace:
         result = []
         # Checks if cart with cart_id exists
         if cart_id not in self.carts:
+            self.logger.info("place_order(%d): Cart doesn't exist!", cart_id)
             return None
         # Extracts the cart list
         cart_list = self.carts[cart_id]
@@ -204,6 +237,7 @@ class Marketplace:
             self.producers_locks[producer_id].release()
         # Cleans the cart list
         self.carts[cart_id] = []
+        self.logger.info("place_order(%d): Order placed: %s!", cart_id, result)
         return result
 
 
