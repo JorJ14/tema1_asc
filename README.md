@@ -5,20 +5,19 @@ Grupă: 332CC
 
 Organizare
 -
-1. Explicație pentru soluția aleasă:
 
-***Obligatoriu:*** 
+În cadrul acestei teme am implementat un Marketplace prin intermediul căruia mai mulți ***producători*** își oferă produsele spre vânzare, iar mai mulți ***cumpărători*** achiziționează produsele puse la dispoziție.
 
+***Producător:***
+* există mai mulți producători ce produc obiecte de tip ceai/cafea;
+* fiecare producător poate adăuga un număr limitat de produse;
+* atunci când această limită este atinsă, producătorul așteaptă până când este vândut cel puțin un produs de al său.
 
-* De făcut referință la abordarea generală menționată în paragraful de mai sus. Aici se pot băga bucăți de cod/funcții - etc.
-* Consideri că tema este utilă?
-* Consideri implementarea naivă, eficientă, se putea mai bine?
-
-***Opțional:***
-
-
-* De menționat cazuri speciale, nespecificate în enunț și cum au fost tratate.
-
+***Consumator:***
+* fiecare consumator are nevoie de un coș de cumpărături, cu un id asociat;
+* poate adăuga produse în coș: produsele respective devin indisponibile pentru ceilalți clienți;
+* poate șterge produse din coș: produsele respective redevin disponibile pentru toți consumatorii;
+* poate plasa o comandă: produsele rezervate vor fi eliminate din lista de produse ale producătorilor.
 
 Implementare
 -
@@ -37,5 +36,5 @@ Resurse utilizate
 
 Git
 -
-Link către repository-ul de git: [https://github.com/JorJ14/tema1_asc.git](aici) (momentan privat)
+Link către repository-ul de git: [https://github.com/JorJ14/tema1_asc.git]() (momentan privat).
 
