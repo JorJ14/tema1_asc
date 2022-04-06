@@ -17,7 +17,7 @@ Organizare
 * fiecare consumator are nevoie de un coș de cumpărături, cu un id asociat;
 * poate adăuga produse în coș: produsele respective devin indisponibile pentru ceilalți clienți;
 * poate șterge produse din coș: produsele respective redevin disponibile pentru toți consumatorii;
-* poate plasa o comandă: produsele rezervate vor fi eliminate din lista de produse ale producătorilor.
+* poate plasa o comandă: produsele rezervate vor fi eliminate din listele de produse ale producătorilor.
 
 Pentru a implementa aceste funcționalități, am avut următoarea abordare:
 * pentru a înregistra un producător sau un coș de cumpărături, avem câte un contor, pe baza căruia o să generăm id-urile corespunzătoare. De asemenea, fiind vorba de paralelism, mai multe thread-uri ar putea modifica simultan aceste valori, astfel, am folosit două obiecte Lock(), pentru a evita race conditions;
