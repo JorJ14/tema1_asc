@@ -30,6 +30,8 @@ Pentru a implementa aceste funcționalități, am avut următoarea abordare:
 Consider tema utilă pentru că m-am obișnuit cu coding style-ul din Python, cu sintaxa de Python și pentru partea de Unit Testing.
 Totuși, mi se pare că se pierde din farmecul Multithreading-ului prin folosirea apelurilor sleep, în locul unor elemente de sincronizare.
 
+Consider implementarea ok, dar sigur se putea și mai bine.
+
 Implementare
 -
 
