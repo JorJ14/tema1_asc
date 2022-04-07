@@ -44,13 +44,13 @@ class Marketplace:
         # we modify the queue size of the producer (for example the producer publish a product
         # and a consumer places an order which contains products from this producer)
         self.producers_locks = {}
-        # Dictionary with key: product_name, value: the list of producer_ids who have
+        # Dictionary with key: product, value: the list of producer_ids who have
         # the products available
         self.products_producers = {}
-        # Dictionary with key: product_name, value: a Lock used to avoid the situation:
+        # Dictionary with key: product, value: a Lock used to avoid the situation:
         # product1 is available only from producer0 (quantity = 1) and two consumers
         # wants to add product1 to their carts. Both checks if the products is available and
-        # after that each one pops the queue products_producers[product1.name] and the second
+        # after that each one pops the queue products_producers[product1] and the second
         # pop will give us an error (we will pop an empty queue)
         self.products_locks = {}
         # Used for logging
@@ -108,14 +108,14 @@ class Marketplace:
                              producer_id, product)
             return False
         # Marks the product as available at producer_id
-        if product.name not in self.products_producers:
-            self.products_locks[product.name] = Lock()
-            self.products_locks[product.name].acquire()
-            self.products_producers[product.name] = []
+        if product not in self.products_producers:
+            self.products_locks[product] = Lock()
+            self.products_locks[product].acquire()
+            self.products_producers[product] = []
         else:
-            self.products_locks[product.name].acquire()
-        self.products_producers[product.name].append(producer_id)
-        self.products_locks[product.name].release()
+            self.products_locks[product].acquire()
+        self.products_producers[product].append(producer_id)
+        self.products_locks[product].release()
         # Increments queue size
         self.producers_queue[producer_id] += 1
         # Release the lock
@@ -162,20 +162,20 @@ class Marketplace:
                              cart_id, product)
             return False
         # Checks if product is available at any producer
-        if product.name not in self.products_producers:
+        if product not in self.products_producers:
             self.logger.info("Finished add_to_cart(%d, %s): Product is not available!",
                              cart_id, product)
             return False
-        self.products_locks[product.name].acquire()
-        if not self.products_producers[product.name]:
-            self.products_locks[product.name].release()
+        self.products_locks[product].acquire()
+        if not self.products_producers[product]:
+            self.products_locks[product].release()
             self.logger.info("Finished add_to_cart(%d, %s): Product is not available!",
                              cart_id, product)
             return False
         # Extracts one producer that has the product available
         # Makes product unavailable
-        producer_id = self.products_producers[product.name].pop(0)
-        self.products_locks[product.name].release()
+        producer_id = self.products_producers[product].pop(0)
+        self.products_locks[product].release()
         # Adds product to the cart, knowing what is the producer of the product
         # so in case of removing, the product will become available again from
         # this producer
@@ -208,7 +208,7 @@ class Marketplace:
             if cart_element["product"] == product:
                 # Makes product available from the producer
                 producer_id = cart_element["producer_id"]
-                self.products_producers[product.name].append(producer_id)
+                self.products_producers[product].append(producer_id)
                 # Removes product from cart
                 self.carts[cart_id].remove(cart_element)
                 self.logger.info("Finished remove_from_cart(%d, %s): Product removed from cart!",
@@ -309,13 +309,13 @@ class TestMarketplace(unittest.TestCase):
         self.assertEqual(self.marketplace.producers_queue['prod1'], 4,
                          'Producer prod1 queue size should be 4!')
         # Checks the available quantity for each product
-        self.assertEqual(len(self.marketplace.products_producers[self.product0.name]), 3,
+        self.assertEqual(len(self.marketplace.products_producers[self.product0]), 3,
                          'Product0 should be available in quantity = 3!')
-        self.assertEqual(len(self.marketplace.products_producers[self.product1.name]), 3,
+        self.assertEqual(len(self.marketplace.products_producers[self.product1]), 3,
                          'Product1 should be available in quantity = 3!')
-        self.assertEqual(len(self.marketplace.products_producers[self.product2.name]), 2,
+        self.assertEqual(len(self.marketplace.products_producers[self.product2]), 2,
                          'Product2 should be available in quantity = 2!')
-        self.assertEqual(len(self.marketplace.products_producers[self.product3.name]), 1,
+        self.assertEqual(len(self.marketplace.products_producers[self.product3]), 1,
                          'Product3 should be available in quantity = 1!')
 
     def test_new_cart(self):
@@ -370,13 +370,13 @@ class TestMarketplace(unittest.TestCase):
         self.assertEqual(len(self.marketplace.carts[1]), 1,
                          'Wrong number of products added to cart!')
         # Checks the available quantity for each product
-        self.assertEqual(len(self.marketplace.products_producers[self.product0.name]), 2,
+        self.assertEqual(len(self.marketplace.products_producers[self.product0]), 2,
                          'Product0 should be available in quantity = 0!')
-        self.assertEqual(len(self.marketplace.products_producers[self.product1.name]), 0,
+        self.assertEqual(len(self.marketplace.products_producers[self.product1]), 0,
                          'Product1 should be available in quantity = 3!')
-        self.assertEqual(len(self.marketplace.products_producers[self.product2.name]), 0,
+        self.assertEqual(len(self.marketplace.products_producers[self.product2]), 0,
                          'Product2 should be available in quantity = 2!')
-        self.assertEqual(len(self.marketplace.products_producers[self.product3.name]), 1,
+        self.assertEqual(len(self.marketplace.products_producers[self.product3]), 1,
                          'Product3 should be available in quantity = 1!')
 
     def test_remove_from_cart(self):
@@ -395,7 +395,7 @@ class TestMarketplace(unittest.TestCase):
         self.assertFalse(self.marketplace.remove_from_cart(0, self.product3),
                          'Should not be able to remove this product!')
         # Checks the available quantity for product1
-        self.assertEqual(len(self.marketplace.products_producers[self.product1.name]), 1,
+        self.assertEqual(len(self.marketplace.products_producers[self.product1]), 1,
                          'Product1 should be available in quantity = 1!')
 
     def test_place_order(self):
